@@ -1,12 +1,20 @@
 package scenes;
 
+import api.ApiClient;
+import api.ApiListener;
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 
@@ -14,52 +22,111 @@ public class Login implements Screen {
     private Stage stage;
     private TextField usernameField;
     private TextField passwordField;
-    private TextButton loginButton;
-    private TextButton registerButton;
+    private Texture backgroundTexture;
+    private Image backgroundImage;
 
     public Login() {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
-        // Campos de texto para nombre de usuario y contraseña
-        usernameField = new TextField("", new TextField.TextFieldStyle());
-        passwordField = new TextField("", new TextField.TextFieldStyle());
+        backgroundTexture = new Texture(Gdx.files.internal("fondo.png"));
+        backgroundImage = new Image(backgroundTexture);
+        backgroundImage.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+        BitmapFont font = new BitmapFont();
+        TextureRegionDrawable cursorDrawable = new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("cursor.png"))));
+        TextureRegionDrawable backgroundDrawable = new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("fondoText.png"))));
+        TextField.TextFieldStyle textFieldStyle = new TextField.TextFieldStyle(font, font.getColor(), cursorDrawable, null, backgroundDrawable);
+
+        // Botón de retroceder
+        Texture retrocederTexture = new Texture(Gdx.files.internal("retroceder.png"));
+        TextureRegionDrawable retrocederDrawable = new TextureRegionDrawable(new TextureRegion(retrocederTexture));
+        ImageButton retrocederButton = new ImageButton(retrocederDrawable);
+        retrocederButton.setPosition(10, Gdx.graphics.getHeight() - retrocederButton.getHeight() - 10); // Posición arriba a la izquierda
+        retrocederButton.setSize(150, 150);
+        retrocederButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // Acción para retroceder a la página anterior
+                ((Game) Gdx.app.getApplicationListener()).setScreen(new MainMenu());
+            }
+        });
+
+
+        Label.LabelStyle labelStyle = new Label.LabelStyle(font, font.getColor());
+
+        usernameField = new TextField("", textFieldStyle);
+        passwordField = new TextField("", textFieldStyle);
         passwordField.setPasswordMode(true);
         passwordField.setPasswordCharacter('*');
 
-        // Botones de inicio de sesión y registro
-        loginButton = new TextButton("Login", new TextButton.TextButtonStyle());
-        registerButton = new TextButton("Register", new TextButton.TextButtonStyle());
+        // Botones de inicio de sesión
+        Texture loginTexture = new Texture(Gdx.files.internal("botonConfirmar.png"));
+        TextureRegionDrawable loginButtonDrawable = new TextureRegionDrawable(new TextureRegion(loginTexture));
+        ImageButton loginButton = new ImageButton(loginButtonDrawable);
 
-        // Configurar disposición de los elementos en la pantalla
         Table table = new Table();
         table.setFillParent(true);
-        table.add(new Label("Username:", new Label.LabelStyle())).padBottom(10);
+        table.add(new Label("Usuario:", labelStyle)).padBottom(10);
         table.add(usernameField).width(200).padBottom(10).row();
-        table.add(new Label("Password:", new Label.LabelStyle())).padBottom(10);
+        table.add(new Label("Contraseña:", labelStyle)).padBottom(10);
         table.add(passwordField).width(200).padBottom(10).row();
         table.add(loginButton).width(100).padBottom(10);
-        table.add(registerButton).width(100).padBottom(10);
 
+        stage.addActor(backgroundImage);
         stage.addActor(table);
+        stage.addActor(loginButton);
+        stage.addActor(retrocederButton);
 
         // Listener para el botón de inicio de sesión
         loginButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                String username = usernameField.getText();
-                String password = passwordField.getText();
-                // Lógica para enviar solicitud HTTP de inicio de sesión al backend
+                String usuario = usernameField.getText();
+                String contrasena = passwordField.getText();
+                ApiClient.login(usuario, contrasena, new ApiListener() {
+                    @Override
+                    public void exito(String respuesta) {
+                        Gdx.app.log("Login", "Login exitoso: " + respuesta);
+                        Gdx.app.postRunnable(() -> {
+                            Login.this.dispose();
+                            ((Game) Gdx.app.getApplicationListener()).setScreen(new MenuPlayer());
+                        });
+                    }
+
+                    @Override
+                    public void error(Throwable error) {
+                        Gdx.app.error("Login", "Error al iniciar sesión: " + error.getMessage());
+                        // Mostrar un diálogo con el mensaje de error
+                        Gdx.app.postRunnable(() -> showErrorDialog("Error al iniciar sesión: " + error.getMessage()));
+                    }
+                });
             }
         });
 
-        // Listener para el botón de registro
-        registerButton.addListener(new ChangeListener() {
+    }
+
+    private void showErrorDialog(String message) {
+        // Crear un estilo para el diálogo manualmente
+        Window.WindowStyle windowStyle = new Window.WindowStyle(new BitmapFont(), Color.WHITE, new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("fondo.png")))));
+        Dialog errorDialog = new Dialog("", windowStyle) {
             @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                // Lógica para cambiar a la pantalla de registro
+            protected void result(Object object) {
+                this.hide();
             }
-        });
+        };
+
+        // Crear un estilo para el label del mensaje
+        Label.LabelStyle labelStyle = new Label.LabelStyle(new BitmapFont(), Color.WHITE);
+        errorDialog.text(new Label(message, labelStyle));
+
+        // Crear un botón de OK manualmente
+        Texture okTexture = new Texture(Gdx.files.internal("botonConfirmar.png"));
+        TextureRegionDrawable buttonOK = new TextureRegionDrawable(new TextureRegion(okTexture));
+        ImageButton registerButton = new ImageButton(buttonOK);
+
+        errorDialog.button(registerButton, true);
+        errorDialog.show(stage);
     }
 
     @Override
@@ -88,5 +155,8 @@ public class Login implements Screen {
     public void hide() {}
 
     @Override
-    public void dispose() {}
+    public void dispose() {
+        stage.dispose();
+        backgroundTexture.dispose();
+    }
 }
