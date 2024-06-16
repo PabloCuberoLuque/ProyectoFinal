@@ -22,26 +22,28 @@ import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import model.Jugador;
 
-
-public class Login implements Screen {
+public class EditarPerfilScreen implements Screen {
     private Stage stage;
     private TextField usernameField;
     private TextField passwordField;
+    private TextField correoField;
     private Texture backgroundTexture;
     private Image backgroundImage;
+    private String nombreUsuario;
+    private String contraseña;
+    private String correo;
     private Sound menuSound;
-
-    public Login() {
+    public EditarPerfilScreen() {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+
+        menuSound = Gdx.audio.newSound(Gdx.files.internal("menu.mp3"));
+        menuSound.loop();
 
         //Fondo de la pagina
         backgroundTexture = new Texture(Gdx.files.internal("fondo.png"));
         backgroundImage = new Image(backgroundTexture);
         backgroundImage.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-
-        menuSound = Gdx.audio.newSound(Gdx.files.internal("menu.mp3"));
-        menuSound.loop();
 
         //Creacion de texturas para botones con imagen
         BitmapFont font = new BitmapFont();
@@ -60,7 +62,7 @@ public class Login implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 menuSound.stop();
-                ((Game) Gdx.app.getApplicationListener()).setScreen(new MainMenu());
+                ((Game) Gdx.app.getApplicationListener()).setScreen(new MenuPlayer());
             }
         });
 
@@ -68,78 +70,86 @@ public class Login implements Screen {
         //Creacion de campos de usuario y contraseña
         Label.LabelStyle labelStyle = new Label.LabelStyle(font, font.getColor());
 
+        ApiClient.obtenerJugadorPorNombre(AppState.nombreUsuario, new ApiListener() {
+            @Override
+            public void exito(String respuesta) {
+                JsonReader jsonReader = new JsonReader();
+                JsonValue jsonValue = jsonReader.parse(respuesta);
+                nombreUsuario = jsonValue.getString("usuario");
+                contraseña = jsonValue.getString("contrasena");
+                correo = jsonValue.getString("correo");
+
+
+                Gdx.app.postRunnable(new Runnable() {
+                    @Override
+                    public void run() {
+                        usernameField.setText(nombreUsuario);
+                        passwordField.setText(contraseña);
+                        correoField.setText(correo);
+                    }
+                });
+            }
+
+
+            @Override
+            public void error(Throwable error) {
+
+            }
+        });
+
+
         usernameField = new TextField("", textFieldStyle);
         passwordField = new TextField("", textFieldStyle);
-        passwordField.setPasswordMode(true);
-        passwordField.setPasswordCharacter('*');
+        correoField = new TextField("",textFieldStyle);
+
 
         // Boton de inicio de sesión
         Texture loginTexture = new Texture(Gdx.files.internal("botonConfirmar.png"));
         TextureRegionDrawable loginButtonDrawable = new TextureRegionDrawable(new TextureRegion(loginTexture));
-        ImageButton loginButton = new ImageButton(loginButtonDrawable);
+        ImageButton actualizarButton = new ImageButton(loginButtonDrawable);
 
-        // Suponiendo que tienes las imágenes cargadas en tu proyecto
         Texture usuarioImageTexture = new Texture(Gdx.files.internal("usuario.png"));
         Texture contraseñaImageTexture = new Texture(Gdx.files.internal("contraseña.png"));
+        Texture correoImageTexture = new Texture(Gdx.files.internal("correo.png"));
 
         // Suponiendo que ya tienes el estilo de las imágenes configurado
         Image usuarioImage = new Image(usuarioImageTexture);
         Image contraseñaImage = new Image(contraseñaImageTexture);
+        Image correoImage = new Image(correoImageTexture);
 
-        loginButton.setPosition(800,50);
-        loginButton.setSize(250,250);
 
         //Creacion de la tabla
         Table table = new Table();
         table.setFillParent(true);
-        table.add(usuarioImage).spaceBottom(5);
+        table.add(usuarioImage).spaceBottom(40);
         table.add(usernameField).width(200).padBottom(10).row();
-        table.add(contraseñaImage).spaceBottom(5);
+        table.add(contraseñaImage).spaceBottom(40);
         table.add(passwordField).width(200).padBottom(10).row();
-        table.setPosition(0,100);
+        table.add(correoImage).spaceBottom(40);
+        table.add(correoField).width(200).padBottom(10).row();
 
+        actualizarButton.setPosition(1600, 40);
 
         //Se añade al stage
         stage.addActor(backgroundImage);
         stage.addActor(table);
-        stage.addActor(loginButton);
+        stage.addActor(actualizarButton);
         stage.addActor(retrocederButton);
 
-        // Listener para el botón de inicio de sesión
-        loginButton.addListener(new ChangeListener() {
+        actualizarButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                String usuario = usernameField.getText();
-                String contrasena = passwordField.getText();
+                // Obtener los nuevos valores de los campos
+                String nuevoUsuario = usernameField.getText();
+                String nuevaContrasena = passwordField.getText();
+                String nuevoCorreo = correoField.getText();
 
-                if(usuario.equals("PabloAdmin")){
-                    ApiClient.login(usuario, contrasena, new ApiListener() {
+                // Actualizar el jugador en el backend
+                ApiClient.actualizarUsuario(AppState.jugadorId, nuevoUsuario, nuevaContrasena, nuevoCorreo, new ApiListener(){
                     @Override
                     public void exito(String respuesta) {
-                        AppState.nombreUsuario = usuario;
-                        AppState.jugadorId= Integer.parseInt(respuesta);
+                        Gdx.app.log("EditarPerfilScreen", "Perfil actualizado exitosamente");
                         Gdx.app.postRunnable(() -> {
-                            menuSound.stop();
-                            Login.this.dispose();
-                            ((Game) Gdx.app.getApplicationListener()).setScreen(new AdminScreen());
-                        });
-                    }
-
-                    @Override
-                    public void error(Throwable error) {
-                        Gdx.app.error("Login", "Error al iniciar sesión: " + error.getMessage());
-                        Gdx.app.postRunnable(() -> showErrorDialog("Error al iniciar sesión: " + error.getMessage()));
-                    }
-                });
-                }else{
-
-                ApiClient.login(usuario, contrasena, new ApiListener() {
-                    @Override
-                    public void exito(String respuesta) {
-                        AppState.nombreUsuario = usuario;
-                        AppState.jugadorId= Integer.parseInt(respuesta);
-                        Gdx.app.postRunnable(() -> {
-                            Login.this.dispose();
                             menuSound.stop();
                             ((Game) Gdx.app.getApplicationListener()).setScreen(new MenuPlayer());
                         });
@@ -147,14 +157,11 @@ public class Login implements Screen {
 
                     @Override
                     public void error(Throwable error) {
-                        Gdx.app.error("Login", "Error al iniciar sesión: " + error.getMessage());
-                        // Mostrar un diálogo con el mensaje de error
-                        Gdx.app.postRunnable(() -> showErrorDialog("Error al iniciar sesión: " + error.getMessage()));
+                        Gdx.app.error("EditarPerfilScreen", "Error al editar perfil: " + error.getMessage());
                     }
                 });
-            }}
+            }
         });
-
     }
 
     private void showErrorDialog(String message) {

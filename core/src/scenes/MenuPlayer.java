@@ -1,8 +1,10 @@
 package scenes;
 
+import api.AppState;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -17,10 +19,16 @@ public class MenuPlayer implements Screen {
     private Stage stage;
     private Texture backgroundTexture;
     private Image backgroundImage;
+    private Game game;
+    private Sound menuSound;
 
     public MenuPlayer() {
+        this.game = game;
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
+
+        menuSound = Gdx.audio.newSound(Gdx.files.internal("menu.mp3"));
+        menuSound.loop();
 
         backgroundTexture = new Texture(Gdx.files.internal("fondo.png"));
         backgroundImage = new Image(backgroundTexture);
@@ -30,16 +38,19 @@ public class MenuPlayer implements Screen {
         Texture jugarTexture = new Texture(Gdx.files.internal("jugar.png"));
         Texture estadisticasTexture = new Texture(Gdx.files.internal("estadisticas.png"));
         Texture cerrarSesionTexture = new Texture(Gdx.files.internal("cerrar.png"));
+        Texture editarPerfilTexture = new Texture(Gdx.files.internal("botonEditarPerfil.png"));
 
         ImageButton jugarButton = new ImageButton(new Image(jugarTexture).getDrawable());
         ImageButton estadisticasButton = new ImageButton(new Image(estadisticasTexture).getDrawable());
         ImageButton cerrarSesionButton = new ImageButton(new Image(cerrarSesionTexture).getDrawable());
+        ImageButton editarPerfilButton = new ImageButton(new Image(editarPerfilTexture).getDrawable());
 
         // Configurar disposición de los elementos en la pantalla
         Table table = new Table();
         table.setFillParent(true);
         table.add(jugarButton).width(200).height(80).padBottom(20).row();
         table.add(estadisticasButton).width(200).height(80).padBottom(20).row();
+        table.add(editarPerfilButton).width(200).height(80).padBottom(20).row();
         table.add(cerrarSesionButton).width(200).height(80).padBottom(20);
 
         stage.addActor(backgroundImage);
@@ -49,23 +60,29 @@ public class MenuPlayer implements Screen {
         jugarButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                // Lógica para cambiar a la pantalla de juego
-               // ((Game) Gdx.app.getApplicationListener()).setScreen(new GameScreen());
+                menuSound.stop();
+                ((Game) Gdx.app.getApplicationListener()).setScreen(new GameScreen(game));
             }
         });
 
         estadisticasButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                // Lógica para cambiar a la pantalla de estadísticas
-                //((Game) Gdx.app.getApplicationListener()).setScreen(new EstadisticasScreen());
+                menuSound.stop();
+                ((Game) Gdx.app.getApplicationListener()).setScreen(new EstadisticasScreen(AppState.jugadorId));
             }
         });
-
+        editarPerfilButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                menuSound.stop();
+                ((Game) Gdx.app.getApplicationListener()).setScreen(new EditarPerfilScreen());
+            }
+        });
         cerrarSesionButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                // Lógica para cerrar sesión y volver a la pantalla de inicio de sesión
+                menuSound.stop();
                 ((Game) Gdx.app.getApplicationListener()).setScreen(new MainMenu());
             }
         });

@@ -3,11 +3,14 @@ package scenes;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
@@ -15,6 +18,7 @@ public class MainMenu implements Screen {
     private Stage stage;
     private Texture backgroundTexture;
     private Image backgroundImage;
+    private Sound menuSound;
 
 
     @Override
@@ -23,13 +27,14 @@ public class MainMenu implements Screen {
         Gdx.input.setInputProcessor(stage);
 
         backgroundTexture = new Texture(Gdx.files.internal("fondo.png"));
+        menuSound = Gdx.audio.newSound(Gdx.files.internal("menu.mp3"));
+        menuSound.loop();
 
         // Crear un objeto Image con la textura de fondo
         backgroundImage = new Image(backgroundTexture);
         backgroundImage.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-
-        // Cargar la textura de la imagen del botón
+        // Cargar las texturas de los botones
         Texture registerTexture = new Texture(Gdx.files.internal("botonRegistro.png"));
         TextureRegionDrawable buttonR = new TextureRegionDrawable(new TextureRegion(registerTexture));
 
@@ -38,46 +43,50 @@ public class MainMenu implements Screen {
 
         Texture exitTexture = new Texture(Gdx.files.internal("botonSalir.png"));
         TextureRegionDrawable buttonE = new TextureRegionDrawable(new TextureRegion(exitTexture));
-        // Crear un botón de imagen con la textura cargada
+
+        // Crear los botones de imagen con las texturas cargadas
         ImageButton registerButton = new ImageButton(buttonR);
         ImageButton loginButton = new ImageButton(buttonL);
         ImageButton exitButton = new ImageButton(buttonE);
 
-        // Posicionar los botones en la pantalla
-        registerButton.setPosition(960, 540);
-        loginButton.setPosition(960, 440);
-        exitButton.setPosition(960, 340);
-
         // Agregar listeners a los botones
         registerButton.addListener(new ClickListener() {
             @Override
-            public void clicked(com.badlogic.gdx.scenes.scene2d.InputEvent event, float x, float y) {
-                // Acción al hacer clic en el botón "Register"
+            public void clicked(InputEvent event, float x, float y) {
+                menuSound.stop();
                 ((Game) Gdx.app.getApplicationListener()).setScreen(new Register());
             }
         });
 
         loginButton.addListener(new ClickListener() {
             @Override
-            public void clicked(com.badlogic.gdx.scenes.scene2d.InputEvent event, float x, float y) {
-                // Acción al hacer clic en el botón "Login"
+            public void clicked(InputEvent event, float x, float y) {
+                menuSound.stop();
                 ((Game) Gdx.app.getApplicationListener()).setScreen(new Login());
             }
         });
 
         exitButton.addListener(new ClickListener() {
             @Override
-            public void clicked(com.badlogic.gdx.scenes.scene2d.InputEvent event, float x, float y) {
-                // Acción al hacer clic en el botón "Salir"
+            public void clicked(InputEvent event, float x, float y) {
+                menuSound.stop();
                 Gdx.app.exit();
             }
         });
 
-        // Agregar botones al stage
+        // Crear una tabla para centrar los botones
+        Table table = new Table();
+        table.setFillParent(true);
+        table.center();
+
+        // Agregar botones a la tabla
+        table.add(registerButton).padBottom(20).row();
+        table.add(loginButton).padBottom(20).row();
+        table.add(exitButton).padBottom(20).row();
+
+        // Agregar actores al stage
         stage.addActor(backgroundImage);
-        stage.addActor(registerButton);
-        stage.addActor(loginButton);
-        stage.addActor(exitButton);
+        stage.addActor(table);
 
     }
 

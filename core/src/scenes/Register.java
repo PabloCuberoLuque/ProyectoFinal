@@ -5,6 +5,8 @@ import api.ApiListener;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -18,20 +20,19 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 
 public class Register implements Screen {
-
     private Stage stage;
     private TextField usernameField;
     private TextField passwordField;
     private TextField emailField;
-
     private Image backgroundImage;
     private Texture backgroundTexture;
+    private Sound menuSound;
 
     public Register() {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
-
-
+        menuSound = Gdx.audio.newSound(Gdx.files.internal("menu.mp3"));
+        menuSound.loop();
 
         backgroundTexture = new Texture(Gdx.files.internal("fondo.png"));
         backgroundImage = new Image(backgroundTexture);
@@ -39,11 +40,11 @@ public class Register implements Screen {
 
         // Crear estilos manualmente
         BitmapFont font = new BitmapFont();
+        font.getData().setScale(1.5f);
         TextureRegionDrawable cursorDrawable = new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("cursor.png"))));
         TextureRegionDrawable backgroundDrawable = new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("fondoText.png"))));
-        TextField.TextFieldStyle textFieldStyle = new TextField.TextFieldStyle(font, font.getColor(), cursorDrawable, null, backgroundDrawable);
+        TextField.TextFieldStyle textFieldStyle = new TextField.TextFieldStyle(font, Color.BLACK, cursorDrawable, null, backgroundDrawable);
 
-        Label.LabelStyle labelStyle = new Label.LabelStyle(font, font.getColor());
 
         usernameField = new TextField("", textFieldStyle);
         passwordField = new TextField("", textFieldStyle);
@@ -61,7 +62,7 @@ public class Register implements Screen {
         retrocederButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                // Acción para retroceder a la página anterior
+                menuSound.stop();
                 ((Game) Gdx.app.getApplicationListener()).setScreen(new MainMenu());
             }
         });
@@ -71,20 +72,29 @@ public class Register implements Screen {
         Texture confirmarTexture = new Texture(Gdx.files.internal("botonConfirmar.png"));
         TextureRegionDrawable buttonC = new TextureRegionDrawable(new TextureRegion(confirmarTexture));
 
+        Texture usuarioImageTexture = new Texture(Gdx.files.internal("usuario.png"));
+        Texture contraseñaImageTexture = new Texture(Gdx.files.internal("contraseña.png"));
+        Texture correoImageTexture = new Texture(Gdx.files.internal("correo.png"));
+
+        // Suponiendo que ya tienes el estilo de las imágenes configurado
+        Image usuarioImage = new Image(usuarioImageTexture);
+        Image contraseñaImage = new Image(contraseñaImageTexture);
+        Image correoImage = new Image(correoImageTexture);
+
+
         ImageButton registerButton = new ImageButton(buttonC);
 
-        registerButton.setPosition(200, 100);
+        registerButton.setPosition(1600, 40);
 
         Table table = new Table();
         table.setFillParent(true);
-        table.add(new Label("Usuario:", labelStyle)).padBottom(10);
+        table.add(usuarioImage).spaceBottom(5);
         table.add(usernameField).width(100).padBottom(10).row();
-        table.add(new Label("Contraseña:", labelStyle)).padBottom(10);
+        table.add(contraseñaImage).spaceBottom(5);
         table.add(passwordField).width(100).padBottom(10).row();
-        table.add(new Label("Correo:", labelStyle)).padBottom(10);
+        table.add(correoImage).spaceBottom(5);
         table.add(emailField).width(100).padBottom(10).row();
-        table.add(registerButton).width(100).padBottom(10);
-
+        table.center();
 
         stage.addActor(backgroundImage);
         stage.addActor(table);
@@ -98,29 +108,97 @@ public class Register implements Screen {
                 String usuario = usernameField.getText();
                 String contrasena = passwordField.getText();
                 String correo = emailField.getText();
-                ApiClient.register(usuario, contrasena, correo, new ApiListener() {
+                // Validar campos vacíos
+                if (usuario.isEmpty() || contrasena.isEmpty() || correo.isEmpty()) {
+                    showErrorDialog("Todos los campos son obligatorios");
+                    return;
+                }
+
+                // Validar que el nombre de usuario comience con una letra mayúscula
+                if (!Character.isUpperCase(usuario.charAt(0))) {
+                    showErrorDialog("El nombre de usuario debe comenzar con una letra mayúscula");
+                    return;
+                }
+
+                // Validar que el nombre de usuario no contenga números
+                if (usuario.matches(".*\\d.*")) {
+                    showErrorDialog("El nombre de usuario no debe contener números");
+                    return;
+                }
+                // Validar el formato del correo electrónico
+                if (!correo.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+                    showErrorDialog("Formato de correo electrónico inválido");
+                    return;
+                }
+
+                // Verificar si el usuario ya existe
+                ApiClient.verificarUsuarioExistente(usuario, new ApiListener() {
                     @Override
-                    public void exito(String respuesta) {
-                        Gdx.app.log("Register", "Registro exitoso");
-                        Gdx.app.postRunnable(new Runnable() {
-                            @Override
-                            public void run() {
-                                // Cerrar la pantalla actual
-                                Register.this.dispose();
-                                // Mostrar la pantalla del menú principal
-                                ((Game) Gdx.app.getApplicationListener()).setScreen(new MainMenu());
-                            }
-                        });
+                    public void exito(String usuarioExiste) {
+                        if (usuarioExiste.equals("true")) {
+                            Gdx.app.postRunnable(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Gdx.app.log("Register", "El usuario ya existe");
+                                    menuSound.stop();
+                                    ((Game) Gdx.app.getApplicationListener()).setScreen(new Register());
+                                }
+                            });
+                        } else {
+                            ApiClient.register(usuario, contrasena, correo, new ApiListener() {
+                                @Override
+                                public void exito(String respuesta) {
+                                    Gdx.app.log("Register", "Registro exitoso");
+                                    Gdx.app.postRunnable(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            // Cerrar la pantalla actual
+                                            Register.this.dispose();
+                                            menuSound.stop();
+                                            ((Game) Gdx.app.getApplicationListener()).setScreen(new MainMenu());
+                                        }
+                                    });
+                                }
+
+                                @Override
+                                public void error(Throwable error) {
+                                    Gdx.app.error("Register", "Error al registrar usuario: " + error.getMessage());
+                                }
+                            });
+                        }
                     }
 
                     @Override
                     public void error(Throwable error) {
-                        Gdx.app.error("Register", "Error al registrar usuario: " + error.getMessage());
+                        Gdx.app.error("Verificar Usuario", "Error al verificar usuario: " + error.getMessage());
                     }
                 });
             }
-        });
+        });}
+
+    private void showErrorDialog(String message) {
+        // Crear un estilo para el diálogo manualmente
+        Window.WindowStyle windowStyle = new Window.WindowStyle(new BitmapFont(), Color.BLACK, new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("fondo.png")))));
+        Dialog errorDialog = new Dialog("", windowStyle) {
+            @Override
+            protected void result(Object object) {
+                this.hide();
+            }
+        };
+
+        // Crear un estilo para el label del mensaje
+        Label.LabelStyle labelStyle = new Label.LabelStyle(new BitmapFont(), Color.WHITE);
+        errorDialog.text(new Label(message, labelStyle));
+
+        // Crear un botón de OK manualmente
+        Texture okTexture = new Texture(Gdx.files.internal("botonConfirmar.png"));
+        TextureRegionDrawable buttonOK = new TextureRegionDrawable(new TextureRegion(okTexture));
+        ImageButton registerButton = new ImageButton(buttonOK);
+
+        errorDialog.button(registerButton, true);
+        errorDialog.show(stage);
     }
+
 
     @Override
     public void show() {}
